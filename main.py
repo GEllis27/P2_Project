@@ -32,3 +32,22 @@ class Paddle:
         if self.rect.bottom > screen_height:
             self.rect.bottom = screen_height
     
+class Ball:
+    def __init__(self, x_position, y_position):
+        self.position_and_size = pygame.Rect(x_position, y_position, 15, 15)
+        self.horizontal_velo = 4 #How many pixels the ball moves horizontally per frame
+        self.vertical_velo = 4 #How many pixels the ball moves vertically per frame
+
+    def move(self):
+        self.position_and_size.x += self.horizontal_velo #How many pixels the ball moves horizontally per frame
+        self.position_and_size.y += self.vertical_velo #How many pixels the ball moves vertically per frame
+
+    def bounce_off_wall(self):
+        self.vertical_velo *= -1 #Reverses the vertical velocity to bounce off the wall
+
+    def bounce_off_paddle(self):
+        self.horizontal_velo *= -1 #Reverses the horizontal velocity to bounce off the paddle
+
+    def reset_to_center(self, screen_width, screen_height):
+        self.position_and_size.center = (screen_width // 2, screen_height // 2) #Resets the ball to the center of the screen
+        self.horizontal_velo *= -1 #Change the direction of the ball after a point is scored
