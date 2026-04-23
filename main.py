@@ -15,6 +15,7 @@ class Paddle:
         self.width = width
         self.height = height
         self.speed = speed
+        self.velocity = 0 
     
     def move_up(self):
         self.velocity = -self.speed
@@ -35,8 +36,8 @@ class Paddle:
 class Ball:
     def __init__(self, x_position, y_position):
         self.position_and_size = pygame.Rect(x_position, y_position, 15, 15)
-        self.horizontal_velo = 4 #How many pixels the ball moves horizontally per frame
-        self.vertical_velo = 4 #How many pixels the ball moves vertically per frame
+        self.horizontal_velo = random.choice([-4, 4]) #How many pixels the ball moves horizontally per frame
+        self.vertical_velo = random.choice([-4, 4])#How many pixels the ball moves vertically per frame
 
     def move(self):
         self.position_and_size.x += self.horizontal_velo #How many pixels the ball moves horizontally per frame
@@ -69,6 +70,9 @@ class Score:
     def increase_left_player_score(self):
         self.left_player_score += 1
 
+    def increace_right_player_score(self):
+        self.right_player_score += 1
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -82,14 +86,21 @@ class Game:
 
         self.left_paddle = Paddle(Y=self.screen_height//2 - 60, width=20, height=120, speed=6)
         self.left_paddle.rect = pygame.Rect(50, self.left_paddle.Y, self.left_paddle.width, self.left_paddle.height)
-        self.left_paddle.velocity = 0
-
+        
         self.right_paddle = Paddle(Y=self.screen_height//2 - 60, width=20, height=120, speed=6)
         self.right_paddle.rect = pygame.Rect(self.screen_width - 70, self.right_paddle.Y, self.right_paddle.width, self.right_paddle.height)
-        self.right_paddle.velocity = 0
+        
 
-        self.ball = Ball(x_position=self.screen_width//2, y_position=self.screen_height//2)
+        self.ball = Ball(
+            x_position=self.screen_width//2 - 7,
+            y_position=self.screen_height//2 - 7
+        )
+
         self.score = Score()
+
+        self.winning_score = 5
+        self.game_over = False
+        self.winner = None
 
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -127,6 +138,14 @@ class Game:
             self.score.right_player_score += 1
             self.ball.reset_to_center(self.screen_width, self.screen_height)
 
+        #Check Winner
+        if self.score.left_player_score >= self.winning_score:
+            self.game_over = True
+            self.winner = "Player 1"
+        elif self.score.right_player_score >= self.winning_score:
+            self.game_over = True
+            self.winner = "Player 2"
+
     def update(self):
         self.left_paddle.update(self.screen_height)
         self.right_paddle.update(self.screen_height)
@@ -135,10 +154,29 @@ class Game:
 
     def draw(self):
         self.game_window.fill((0, 0, 0))  # Clear screen
+
         pygame.draw.rect(self.game_window, (255, 255, 255), self.left_paddle.rect)
         pygame.draw.rect(self.game_window, (255, 255, 255), self.right_paddle.rect)
         pygame.draw.ellipse(self.game_window, (255, 255, 255), self.ball.position_and_size)
+
         self.score.draw(self.game_window, self.screen_width)
+        pygame.display.flip()
+
+        #Instructions
+        font = pygame.font.Font(None, 28)
+        instructions = font.render(
+            "Player 1: W/S | Player 2: Up/Down | First to 5 wins | Press R to restart",
+            True,
+            (255, 255, 255)
+        )
+        self.game_window.blit(instructions, (40, self.screen_height - 40))
+
+        #Winner Message
+        if self.game_over:
+            big_font = pygame.font.Font(None, 60)
+            win_text = big_font.render(f"{self.winner} Wins!", True, (255, 255, 255))
+            self.game_window.blit(win_text, (self.screen_width//2 - 140, self.screen_height//2 - 30))
+
         pygame.display.flip()
 
     def run(self):
@@ -148,10 +186,17 @@ class Game:
                     pygame.quit()
                     sys.exit()
 
-            self.handle_input()
-            self.update()
+                #Restart game
+                if self.game_over and event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        self.__init__() 
+
+            if not self.game_over:
+                self.handle_input()
+                self.update()
+
             self.draw()
-            self.frame_rate_controller.tick(60)  
+            self.frame_rate_controller.tick(60) 
 
 
 # Start the game
