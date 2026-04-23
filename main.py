@@ -2,99 +2,90 @@ import pygame, sys, random
 
 pygame.init()
 
-Width, Height = 600, 800
-FONT = pygame.font.SysFont("Consolas", int(Width/20))
-SCREEN = pygame.display.set_mode((Width, Height))
+WIDTH, HEIGHT = 600, 800
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Pong!")
 CLOCK = pygame.time.Clock()
 
-    
+
+# ---------------- PADDLE ----------------
 class Paddle:
-    def __init__(self, Y, width, height, speed):
-        self.Y = Y
+    def __init__(self, x, y, width, height, speed):
         self.width = width
         self.height = height
         self.speed = speed
-        self.velocity = 0 
-    
+        self.velocity = 0
+
+        self.rect = pygame.Rect(x, y, width, height)
+
     def move_up(self):
         self.velocity = -self.speed
-    
+
     def move_down(self):
         self.velocity = self.speed
-    
+
     def stop(self):
         self.velocity = 0
 
     def update(self, screen_height):
         self.rect.y += self.velocity
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > screen_height:
-            self.rect.bottom = screen_height
-    
+        self.rect.y = max(0, min(self.rect.y, screen_height - self.height))
+
+
+# ---------------- BALL ----------------
 class Ball:
-    def __init__(self, x_position, y_position):
-        self.position_and_size = pygame.Rect(x_position, y_position, 15, 15)
-        self.horizontal_velo = random.choice([-4, 4]) #How many pixels the ball moves horizontally per frame
-        self.vertical_velo = random.choice([-4, 4])#How many pixels the ball moves vertically per frame
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 15, 15)
+        self.horizontal_velo = random.choice([-4, 4])
+        self.vertical_velo = random.choice([-4, 4])
 
     def move(self):
-        self.position_and_size.x += self.horizontal_velo #How many pixels the ball moves horizontally per frame
-        self.position_and_size.y += self.vertical_velo #How many pixels the ball moves vertically per frame
+        self.rect.x += self.horizontal_velo
+        self.rect.y += self.vertical_velo
 
-    def bounce_off_wall(self):
-        self.vertical_velo *= -1 #Reverses the vertical velocity to bounce off the wall
+    def bounce_wall(self):
+        self.vertical_velo *= -1
 
-    def bounce_off_paddle(self):
-        self.horizontal_velo *= -1 #Reverses the horizontal velocity to bounce off the paddle
+    def bounce_paddle(self):
+        self.horizontal_velo *= -1
 
-    def reset_to_center(self, screen_width, screen_height):
-        self.position_and_size.center = (screen_width // 2, screen_height // 2) #Resets the ball to the center of the screen
-        self.horizontal_velo *= -1 #Change the direction of the ball after a point is scored
+    def reset(self, screen_width, screen_height):
+        self.rect.center = (screen_width // 2, screen_height // 2)
+        self.horizontal_velo = random.choice([-4, 4])
+        self.vertical_velo = random.choice([-4, 4])
 
+
+# ---------------- SCORE ----------------
 class Score:
     def __init__(self):
-        self.left_player_score = 0
-        self.right_player_score = 0
-        self.display_font = pygame.font.Font(None, 50)
+        self.left = 0
+        self.right = 0
+        self.font = pygame.font.Font(None, 50)
 
-    def draw(self, screen, screen_width):
-        score_text = self.display_font.render(
-            f"{self.left_player_score}  {self.right_player_score}",
-            True,
-            (255, 255, 255)
-        )
-        screen.blit(score_text, (screen_width // 2 - 40, 20))
+    def draw(self, screen, width):
+        text = self.font.render(f"{self.left}  {self.right}", True, (255, 255, 255))
+        screen.blit(text, (width // 2 - 40, 20))
 
-    def increase_left_player_score(self):
-        self.left_player_score += 1
+    def add_left(self):
+        self.left += 1
 
-    def increace_right_player_score(self):
-        self.right_player_score += 1
+    def add_right(self):
+        self.right += 1
 
+
+# ---------------- GAME ----------------
 class Game:
     def __init__(self):
-        pygame.init()
+        self.width = WIDTH
+        self.height = HEIGHT
 
-        self.screen_width = 800
-        self.screen_height = 600
-        self.game_window = pygame.display.set_mode((self.screen_width, self.screen_height))
-        pygame.display.set_caption("Pong")
+        self.screen = SCREEN
+        self.clock = CLOCK
 
-        self.frame_rate_controller = pygame.time.Clock()
+        self.left_paddle = Paddle(50, HEIGHT // 2 - 60, 20, 120, 6)
+        self.right_paddle = Paddle(WIDTH - 70, HEIGHT // 2 - 60, 20, 120, 6)
 
-        self.left_paddle = Paddle(Y=self.screen_height//2 - 60, width=20, height=120, speed=6)
-        self.left_paddle.rect = pygame.Rect(50, self.left_paddle.Y, self.left_paddle.width, self.left_paddle.height)
-        
-        self.right_paddle = Paddle(Y=self.screen_height//2 - 60, width=20, height=120, speed=6)
-        self.right_paddle.rect = pygame.Rect(self.screen_width - 70, self.right_paddle.Y, self.right_paddle.width, self.right_paddle.height)
-        
-
-        self.ball = Ball(
-            x_position=self.screen_width//2 - 7,
-            y_position=self.screen_height//2 - 7
-        )
+        self.ball = Ball(WIDTH // 2, HEIGHT // 2)
 
         self.score = Score()
 
@@ -102,9 +93,11 @@ class Game:
         self.game_over = False
         self.winner = None
 
+    # -------- INPUT --------
     def handle_input(self):
         keys = pygame.key.get_pressed()
-        # Left paddle controls
+
+        # left
         if keys[pygame.K_w]:
             self.left_paddle.move_up()
         elif keys[pygame.K_s]:
@@ -112,7 +105,7 @@ class Game:
         else:
             self.left_paddle.stop()
 
-        # Right paddle controls
+        # right
         if keys[pygame.K_UP]:
             self.right_paddle.move_up()
         elif keys[pygame.K_DOWN]:
@@ -120,88 +113,96 @@ class Game:
         else:
             self.right_paddle.stop()
 
+    # -------- COLLISIONS --------
     def check_collisions(self):
-        # Ball collision with top/bottom
-        if self.ball.position_and_size.top <= 0 or self.ball.position_and_size.bottom >= self.screen_height:
-            self.ball.bounce_off_wall()
 
-        # Ball collision with paddles
-        if self.ball.position_and_size.colliderect(self.left_paddle.rect) or \
-           self.ball.position_and_size.colliderect(self.right_paddle.rect):
-            self.ball.bounce_off_paddle()
+        # top/bottom wall
+        if self.ball.rect.top <= 0 or self.ball.rect.bottom >= self.height:
+            self.ball.bounce_wall()
 
-        # Scoring
-        if self.ball.position_and_size.left <= 0:
-            self.score.increase_left_player_score()
-            self.ball.reset_to_center(self.screen_width, self.screen_height)
-        elif self.ball.position_and_size.right >= self.screen_width:
-            self.score.right_player_score += 1
-            self.ball.reset_to_center(self.screen_width, self.screen_height)
+        # paddle hits
+        if self.ball.rect.colliderect(self.left_paddle.rect) or \
+           self.ball.rect.colliderect(self.right_paddle.rect):
+            self.ball.bounce_paddle()
 
-        #Check Winner
-        if self.score.left_player_score >= self.winning_score:
+        # scoring RIGHT player (ball left side out)
+        if self.ball.rect.left <= 0:
+            self.score.add_right()
+            self.ball.reset(self.width, self.height)
+
+        # scoring LEFT player (ball right side out)
+        elif self.ball.rect.right >= self.width:
+            self.score.add_left()
+            self.ball.reset(self.width, self.height)
+
+        # win condition
+        if self.score.left >= self.winning_score:
             self.game_over = True
             self.winner = "Player 1"
-        elif self.score.right_player_score >= self.winning_score:
+
+        elif self.score.right >= self.winning_score:
             self.game_over = True
             self.winner = "Player 2"
 
+    # -------- UPDATE --------
     def update(self):
-        self.left_paddle.update(self.screen_height)
-        self.right_paddle.update(self.screen_height)
+        self.left_paddle.update(self.height)
+        self.right_paddle.update(self.height)
         self.ball.move()
         self.check_collisions()
 
+    # -------- DRAW --------
     def draw(self):
-        self.game_window.fill((0, 0, 0))  # Clear screen
+        self.screen.fill((0, 0, 0))
 
-        pygame.draw.rect(self.game_window, (255, 255, 255), self.left_paddle.rect)
-        pygame.draw.rect(self.game_window, (255, 255, 255), self.right_paddle.rect)
-        pygame.draw.ellipse(self.game_window, (255, 255, 255), self.ball.position_and_size)
+        pygame.draw.rect(self.screen, (255, 255, 255), self.left_paddle.rect)
+        pygame.draw.rect(self.screen, (255, 255, 255), self.right_paddle.rect)
+        pygame.draw.ellipse(self.screen, (255, 255, 255), self.ball.rect)
 
-        self.score.draw(self.game_window, self.screen_width)
-        pygame.display.flip()
+        self.score.draw(self.screen, self.width)
 
-        #Instructions
+        # instructions
         font = pygame.font.Font(None, 28)
         instructions = font.render(
-            "Player 1: W/S | Player 2: Up/Down | First to 5 wins | Press R to restart",
+            "W/S | Up/Down | First to 5 wins | R to restart",
             True,
             (255, 255, 255)
         )
-        self.game_window.blit(instructions, (40, self.screen_height - 40))
+        self.screen.blit(instructions, (40, self.height - 40))
 
-        #Winner Message
+        # winner text
         if self.game_over:
             big_font = pygame.font.Font(None, 60)
             win_text = big_font.render(f"{self.winner} Wins!", True, (255, 255, 255))
-            self.game_window.blit(win_text, (self.screen_width//2 - 140, self.screen_height//2 - 30))
+            self.screen.blit(
+                win_text,
+                (self.width // 2 - 140, self.height // 2 - 30)
+            )
 
         pygame.display.flip()
 
+    # -------- RUN LOOP --------
     def run(self):
         while True:
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
 
-                #Restart game
+                # restart
                 if self.game_over and event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
-                        self.__init__() 
+                        self.__init__()
 
             if not self.game_over:
                 self.handle_input()
                 self.update()
 
             self.draw()
-            self.frame_rate_controller.tick(60) 
+            self.clock.tick(60)
 
 
-# Start the game
+# ---------------- START ----------------
 if __name__ == "__main__":
-    game = Game()
-    game.run()
-
-print("test")
+    Game().run()
