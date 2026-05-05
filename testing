@@ -1,0 +1,92 @@
+import os
+import pytest
+
+os.environ["SDL_VIDEODRIVER"] = "dummy" #Instead of opening a window, this allows pygame to run without a display
+os.environ["SDL_AUDIODRIVER"] = "dummy" #Same thing for sound
+
+import pygame
+pygame.display.init()
+pygame.display.set_mode((600, 800))
+
+from main import Ball, Paddle, Score, Game
+
+def test_ball_bounces_off_wall():
+    ball = Ball(300, 400)
+    ball.vertical_velo = -4   #Sets the ball moving upwards
+    ball.bounce_wall()        #Calls ball.bounce_wall() and checks if the velocity is now moiing downwards
+    assert ball.vertical_velo == 4
+
+def test_ball_bounces_off_paddle():
+    ball = Ball(300, 400)
+    ball.horizontal_velo = -4   #Sets the ball moving left towards the paddle
+    ball.bounce_paddle()        #Call ball.bounce_paddle() and checks if the velocity is now moving right
+    assert ball.horizontal_velo == 4
+
+def test_right_player_scores():
+    game = Game()
+    game.ball.rect.left = 0     #Puts the ball at the left edge of the screen
+    game.check_collisions()     #Collision detection
+    assert game.score.right == 1 #Checks if player 2's score went up
+
+def test_game_over_on_winning_score():
+    game = Game()
+    game.score.left = game.winning_score - 1 #Puts player 1's score one away from win
+    game.ball.rect.right = game.width        # Ball is placed at right edge of screen 
+    game.check_collisions()
+    assert game.game_over is True
+    assert game.winner == "Player 1"
+
+def test_paddle_stays_screen():
+    paddle = Paddle(50, 700, 20, 120, 6) #Starts a paddle near the bottom
+    paddle.move_down()
+    for _ in range(50): #Holds the down key
+        paddle.move_down()
+    assert paddle.rect.bottom <= 800 #Checks to make sure paddle never went past screen
+
+#Tests genrated by AI
+
+def test_ball_reset_to_center():
+    game = Game()
+    game.ball.rect.x = 100
+    game.ball.rect.y = 100
+
+    game.ball.reset(game.width, game.height)
+
+    assert game.ball.rect.center == (game.width // 2, game.height // 2)
+
+def test_ball_moves_correctly():
+    ball = Ball(300, 400)
+    ball.horizontal_velo = 5
+    ball.vertical_velo = -3
+
+    ball.move()
+
+    assert ball.rect.x == 305
+    assert ball.rect.y == 397
+
+def test_left_player_scores():
+    game = Game()
+    game.ball.rect.right = game.width  # simulate ball going out right side
+
+    game.check_collisions()
+
+    assert game.score.left == 1
+
+def test_paddle_moves_up():
+    paddle = Paddle(50, 200, 20, 120, 6)
+    initial_y = paddle.rect.y
+
+    paddle.move_up()
+    paddle.update(800)
+
+    assert paddle.rect.y < initial_y
+
+def test_game_not_over_before_winning_score():
+    game = Game()
+    game.score.left = game.winning_score - 2  # not enough to win
+    game.ball.rect.right = game.width
+
+    game.check_collisions()
+
+    assert game.game_over is False
+
